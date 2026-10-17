@@ -8,8 +8,12 @@ Repo: https://github.com/josej44/TensorTrainStochastics.jl
 
 ## Environment
 - Julia 1.11 (via juliaup). Always run from the repo root with `julia --project=.`
-- `TensorTrains` is a LOCAL dev package: `/home/julian/.julia/dev/TensorTrains`
-  (added with `Pkg.develop(path=...)`). Do not replace it with a registry version.
+- `TensorTrains` is a registered dependency (`[compat] TensorTrains = "0.14"`); CI
+  resolves it from General. For local work the dev clone
+  `/home/julian/.julia/dev/TensorTrains` (upstream main) is `Pkg.develop`-ed into the
+  uncommitted `Manifest.toml` only. Never commit paths or `[sources]` in
+  `Project.toml` / `test/Project.toml`. Local main differs from registered 0.14.0 only
+  by `accumulate_M` normalization (harmless).
 - The repo lives on an external disk with spaces in the path: always quote paths.
 - `Manifest.toml` is not committed.
 - Check after every change: `julia --project=. -e 'using TensorTrainStochastics; println("OK")'`
