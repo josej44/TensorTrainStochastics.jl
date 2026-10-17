@@ -22,7 +22,18 @@ monte_carlo_general.jl (Monte Carlo side) and auxiliary_tensor_train_tools.jl,
 metropolis_swap_tt.jl, transition_rates_builder.jl, initialization_params.jl,
 build_graph_tt.jl, graph_setup.jl, efficient_observables.jl, time_correlation.jl,
 boltzmann_distribution_tt.jl, tensor_train_evolution.jl (tensor-train side).
-Ask José for their location if not found under `../`. Never edit the originals.
+Never edit the originals.
+
+Location (latest version = git working tree, including uncommitted changes):
+`/media/julian/Nuevo vol/UNIVERSIDAD/Investigación_Mulet/Parallel_Tempering_Italia/Codigos_version_2/MPT_Parallel_Tempering`
+- `GlauberPT.jl/src/monte_carlo_efficient/` and `GlauberPT.jl/src/tensor_train_efficient/`: the scripts.
+- `GlauberPT_test/*.ipynb` (and `pruebas.jl`, which is really a notebook): tests and work in progress.
+- `TensorTrains.jl/`: TensorTrains v0.13.0 plus José's sum fix (commit 941abfa).
+- `trash/`: superseded, ignore.
+- `../Codigos/MPT_Parallel_Tempering` is an OLDER copy (still referenced by the
+  global Julia 1.12 env and by `GlauberPT_test/Project.toml`); do not use it as a source.
+
+`INVENTORY.md` maps every original function to its destination in this package.
 
 ## Architecture rules
 1. `src/TensorTrainStochastics.jl` holds ALL `using`, `include` and `export`.
