@@ -24,7 +24,7 @@ General facts:
 | `identity_tensor_train(N,qs)` / `(N,qs...)` / `(A)` | auxiliary_tensor_train_tools | constant-1 TT | dup: a different implementation lives in inverse_function_test.ipynb and trash; **src is canonical** |
 | `estimate_norm_tt(B)` | aux | upper bound of max\|B(x)\| | dup in trash |
 | `divide_by_constant!`, `multiply_by_constant!` | aux | scale a TT through `z` (a denominator) | dup in notebooks/trash. The notebook `multiply_by_constant` (no `!`) multiplies `z`, so it actually **divides**: wrong, drop |
-| `Base.:*(A::T,B::T)` | aux | Hadamard (pointwise) product | **type piracy** (TensorTrains owns both the function and the type) |
+| `Base.:*(A::T,B::T)` | aux | Hadamard (pointwise) product | **type piracy** (TensorTrains owns both the function and the type); now `hadamard(A, B)` |
 | `absorb_z_into_matrices!` | aux | spread `z` over the cores | only used in inverse_function_test.ipynb |
 | `mult_sep_4`, `mult_sep_3` | aux | replica product of two TTs → joint TT on (x,y), combined index `x + Q(y-1)` | unique |
 | `inverse_tt(B,bond;steps)` | aux | Newton–Schulz 1/B | dup = inverse_function_test cell 10; trash has the old `(B,steps,bond)` argument order |
@@ -112,7 +112,7 @@ Notes:
   so mass is not conserved (the following `normalize!` hides this). It has never been used.
 - **C.** `cluster_size_prob(B, N)` throws a BoundsError.
 - **D.** `sample_boltzmann_ising`: the field term in ΔE is missing β.
-- **E.** `Base.:*` on TensorTrains is type piracy. Keep it, flag it in a comment, and consider upstreaming it.
+- **E.** `Base.:*` on TensorTrains is type piracy. Fixed: replaced by the exported `hadamard(A, B)` (same implementation); internal uses (`inverse_tt*`) call `hadamard`, and `EnergySwap` must too when it is migrated.
 - **F.** `full_tcorr_system`, `cluster_size_prob` and `marginal_ev_system` hard-code Q = 2. Assert it.
 - **G.** `inverse_tt*` use `@show`/`@showprogress` unconditionally. Replace with `verbose::Bool=false`.
 
@@ -147,7 +147,7 @@ No notebook calls `apply_metropolis_swap*` or `EnergySwap` directly. `tt_swap` i
 |---|---|
 | `core/parameters.jl` | `AbstractSpinModel`, `ChainModel`, `GraphModel`, accessors (§5) |
 | `core/initialization.jl` | `random_chain_model` (ex `random_params`) |
-| `core/tt_utilities.jl` | `identity_tensor_train`, `estimate_norm_tt`, `divide_by_constant!`, `multiply_by_constant!`, `Base.:*`, `absorb_z_into_matrices!`, `replica_product` (ex `mult_sep_3/4`), `compose_transitions` (ex `mult_sep_transition`), `k_step_transition_tt`, `multi_step_transition_tt`, `inverse_tt`, `inverse_tt_improve` (unexported), `inverse_secant_tt` |
+| `core/tt_utilities.jl` | `identity_tensor_train`, `estimate_norm_tt` (internal), `divide_by_constant!`, `multiply_by_constant!`, `hadamard` (ex `Base.:*`), `absorb_z_into_matrices!` (internal), `replica_product` (ex `mult_sep_3/4`), `compose_transitions` (ex `mult_sep_transition`), `k_step_transition_tt`, `multi_step_transition_tt`, `inverse_tt`, `inverse_tt_improve` (unexported), `inverse_secant_tt` |
 | `distributions/initial_conditions.jl` | `random_P0`, `parallel_random_P0_fixed`, `transform_init_cond_simple/_multiple`, `_product_tt(P0)` (replaces 4 inline copies) |
 | `distributions/boltzmann.jl` | `boltzmann_tt`, `boltzmann_swap_tt`, `boltzmann_swap_n_tt` |
 | `lattices/graph_generation.jl` | `random_3regular`, `reorder_rcm`, `build_instance` |
@@ -180,6 +180,7 @@ No notebook calls `apply_metropolis_swap*` or `EnergySwap` directly. `tt_swap` i
 | `full_subproducts_system_2` | method of `full_subproducts_system` (4-index) | `_2` is opaque |
 | `random_params` | `random_chain_model` | it now returns a model, not params |
 | keyword `coc` | `beta_scale` | opaque |
+| `Base.:*(A, B)` (Hadamard) | `hadamard(A, B)` | avoids type piracy on TensorTrains types |
 | `zero_dec` | `_zero_dec` | private helper |
 
 ## 4. Duplicate decisions
@@ -206,7 +207,7 @@ struct GraphModel <: AbstractSpinModel
     β::Float64
 end
 
-nsites(m); fields(m); with_beta(m, β); GraphModel(m::ChainModel)
+nsites(m); local_fields(m); with_beta(m, β); GraphModel(m::ChainModel)
 ```
 
 - **Replicas** are two models with the same couplings: `boltzmann_swap_tt(m1, m2)`, `boltzmann_swap_n_tt(m1, m2, n)`,
@@ -217,6 +218,9 @@ nsites(m); fields(m); with_beta(m, β); GraphModel(m::ChainModel)
 - **Graph builder:** `build_transition_tensortrain(::GraphModel; update_rule=:metropolis, …)`. Other rules raise an error.
 - **ReferenceMC** keeps `MCParameters` unchanged, plus the adapter `MCParameters(m::ChainModel; betas=[m.β], p0, s, seed)`.
 - Bugs 3, 4 and 10 disappear by construction.
+- Both models require N ≥ 2. **Later domain tests must cover N = 2 and N = 3** (the chain builders treat
+  sites 1 and N as special and have a separate middle-site branch). Any function that needs N ≥ 3 must throw
+  a clear `ArgumentError` for N = 2 rather than fail with a BoundsError.
 
 ## 6. TensorTrains
 
