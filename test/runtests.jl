@@ -23,4 +23,7 @@ include("helpers.jl")
     @testset "evolution" begin
         include("evolution/test_evolution.jl")
     end
+    @testset "observables" begin
+        include("observables/test_observables.jl")
+    end
 end

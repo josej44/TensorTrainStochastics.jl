@@ -76,4 +76,14 @@ export build_parallel_transition_tt, build_sequential_transition_tt,
 export distribution_b_tt, distribution_b_tt_exp
 export ConstantSwap, EnergySwap, no_swap, tt_swap
 
+# observables
+export full_subproducts_system, full_marginals_system, full_second_order_marginals_system,
+       full_simple_ev_system, marginal_ev_system
+export correlation_next_pairs_simple, second_moment_system, correlation_between_spins_system,
+       spatial_correlation
+export energy_function, energy_function_simple, min_energy_config
+export full_tcorr_system, times_correlation_evolution
+export portion_of_TT, cluster_size_prob
+export system_description, system_description_over_time, system_description_over_time_simple
+
 end # module
