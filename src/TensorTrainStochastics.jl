@@ -59,4 +59,7 @@ export identity_tensor_train, divide_by_constant!, multiply_by_constant!, hadama
        replica_product, compose_transitions, k_step_transition_tt, multi_step_transition_tt,
        inverse_tt, inverse_secant_tt
 
+# lattices
+export random_3regular, reorder_rcm, add_gaussian_weights, build_instance
+
 end # module
