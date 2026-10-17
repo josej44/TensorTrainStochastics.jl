@@ -66,4 +66,10 @@ export random_3regular, reorder_rcm, add_gaussian_weights, build_instance
 export boltzmann_tt, boltzmann_swap_tt, boltzmann_swap_n_tt
 export random_P0, parallel_random_P0_fixed, transform_init_cond_simple, transform_init_cond_multiple
 
+# transitions
+export glauber_transition_rate, metropolis_transition_rate, temp_zero_transition_rate,
+       transition_rate_inertia
+export build_parallel_transition_tt, build_sequential_transition_tt,
+       build_transition_tensortrain, parallel_transition_tensor_train
+
 end # module

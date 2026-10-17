@@ -17,4 +17,7 @@ include("helpers.jl")
     @testset "distributions" begin
         include("distributions/test_distributions.jl")
     end
+    @testset "transitions" begin
+        include("transitions/test_transitions.jl")
+    end
 end

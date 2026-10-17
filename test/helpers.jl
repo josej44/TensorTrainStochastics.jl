@@ -86,3 +86,50 @@ end
 
 # Combined replica index of (x, y) for Q = 2: x + 2(y - 1).
 combined_index(x, y) = x .+ 2 .* (y .- 1)
+
+# ---------------------------------------------------------------------------
+# Brute-force transition operators (rows = configuration at t, cols = at t+1)
+# ---------------------------------------------------------------------------
+
+# Neighbourhood layout used by the chain rates (physical spin values).
+function chain_neighbors(s, i)
+    N = length(s)
+    i == 1 && return [s[1], s[2]]
+    i == N && return [s[N-1], s[N]]
+    return [s[i-1], s[i], s[i+1]]
+end
+
+function dense_sequential(rate, m::ChainModel)
+    N = nsites(m); configs = all_configs(N, 2)
+    W = zeros(length(configs), length(configs))
+    for (a, x) in enumerate(configs), (b, y) in enumerate(configs), i in 1:N
+        all(x[k] == y[k] for k in 1:N if k != i) || continue
+        W[a, b] += rate(chain_neighbors(σmap.(x), i), σmap(y[i]), i, m) / N
+    end
+    return W
+end
+
+function dense_parallel(rate, m::ChainModel)
+    N = nsites(m); configs = all_configs(N, 2)
+    return [prod(rate(chain_neighbors(σmap.(x), i), σmap(y[i]), i, m) for i in 1:N) for x in configs, y in configs]
+end
+
+function dense_graph_metropolis(g::GraphModel)
+    N = nsites(g); configs = all_configs(N, 2)
+    W = zeros(length(configs), length(configs))
+    for (a, x) in enumerate(configs), (b, y) in enumerate(configs), i in 1:N
+        all(x[k] == y[k] for k in 1:N if k != i) || continue
+        xf = copy(x); xf[i] = 3 - x[i]
+        acc = min(1.0, exp(-g.β * (graph_energy(g, xf) - graph_energy(g, x))))
+        W[a, b] += (y[i] == x[i] ? 1 - acc : acc) / N
+    end
+    return W
+end
+
+function boltzmann_exact(g::GraphModel)
+    w = [exp(-g.β * graph_energy(g, x)) for x in all_configs(nsites(g), 2)]
+    return w ./ sum(w)
+end
+
+# Split a replica configuration (combined indices 1:4 per site) into (x, y).
+split_replicas(c) = ([(k - 1) % 2 + 1 for k in c], [(k - 1) ÷ 2 + 1 for k in c])

@@ -115,6 +115,10 @@ Notes:
 - **E.** `Base.:*` on TensorTrains is type piracy. Fixed: replaced by the exported `hadamard(A, B)` (same implementation); internal uses (`inverse_tt*`) call `hadamard`, and `EnergySwap` must too when it is migrated.
 - **F.** `full_tcorr_system`, `cluster_size_prob` and `marginal_ev_system` hard-code Q = 2. Assert it.
 - **G.** `inverse_tt*` use `@show`/`@showprogress` unconditionally. Replace with `verbose::Bool=false`.
+- **H.** Graph builder (`_metro_rate` in `build_graph_tt.jl`): the neighbour sum has no `init`, so a site with no
+  neighbours throws `ArgumentError: reducing over an empty collection`. Fixed with `init = 0.0` (h_eff = h_i).
+  Found by test. `build_instance` graphs are 3-regular (never isolated), so past results are unaffected;
+  `GraphModel(chain)` with a zero coupling at a chain end, or any hand-made graph with an isolated node, hit it.
 
 **Planned tests for A and B (exact enumeration, small N, e.g. N = 3):** one Metropolis swap step must leave
 π_β₁ ⊗ π_β₂ invariant.
