@@ -47,7 +47,7 @@ General facts:
 | `metropolis_transition_rate`, `temp_zero_transition_rate`, `zero_dec` | trb | Metropolis / T=0 rates | unique |
 | `ConstantSwap(s)`, `EnergySwap(swapTT)`, `no_swap()` | tensor_train_evolution | closures B → B after a swap | unique; `EnergySwap` is **never used** (bug B) |
 | `distribution_b_tt` | tte | evolve P0 for t steps (+ swapfun) | **bug 1**: default `(B,s)->B`. The notebooks always pass `no_swap()` or `ConstantSwap` |
-| `distribution_b_tt_exp` | tte | same, but squares A each step (times 1, 2, 4, …) | unique, not a duplicate |
+| `distribution_b_tt_exp` | tte | same, but squares A each step: the k-th saved entry is at time 2ᵏ − 1 (0, 1, 3, 7, …) | unique, not a duplicate |
 | `full_tcorr_system(B)` | tte **and** time_correlation | ⟨σ₀σₜ⟩ and connected correlation | **dup, bug 5**: keep the time_correlation.jl version (⟨σ₀⟩⟨σₜ⟩). The notebooks ran the tte version (⟨σₜ⟩²). The two agree only when B₀ is stationary, which is how they were used |
 | `times_correlation_evolution` | tte `(A, B::TensorTrain, t, bond)`; time_correlation `(A, P0::Union{…}, t, bond, t_init=0)` | joint (σ₀,σₜ) evolution | **bug 6**. These are two *methods*, not an override. The TT method is the one the notebooks used (times_correlations*.ipynb, starting from a Boltzmann B). The Union method breaks for TT input and for `t_init ≠ 0` (`t_init` is never used) |
 | `full_subproducts_system`, `full_subproducts_system_2` | efficient_observables | left/right partial sums for 3-index / 4-index TTs | `_2` is the 4-index version of the same thing |

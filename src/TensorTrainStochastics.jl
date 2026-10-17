@@ -72,4 +72,8 @@ export glauber_transition_rate, metropolis_transition_rate, temp_zero_transition
 export build_parallel_transition_tt, build_sequential_transition_tt,
        build_transition_tensortrain, parallel_transition_tensor_train
 
+# evolution
+export distribution_b_tt, distribution_b_tt_exp
+export ConstantSwap, EnergySwap, no_swap, tt_swap
+
 end # module

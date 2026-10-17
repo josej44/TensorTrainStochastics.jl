@@ -20,4 +20,7 @@ include("helpers.jl")
     @testset "transitions" begin
         include("transitions/test_transitions.jl")
     end
+    @testset "evolution" begin
+        include("evolution/test_evolution.jl")
+    end
 end

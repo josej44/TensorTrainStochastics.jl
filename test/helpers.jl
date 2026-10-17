@@ -133,3 +133,18 @@ end
 
 # Split a replica configuration (combined indices 1:4 per site) into (x, y).
 split_replicas(c) = ([(k - 1) % 2 + 1 for k in c], [(k - 1) ÷ 2 + 1 for k in c])
+
+# Exact tensor train of an arbitrary function f(x) on all_configs(N, q), built as a sum
+# of bond-1 indicator TTs (small N only), then compressed without truncation.
+function tt_from_function(f, N, q)
+    configs = all_configs(N, q)
+    terms = map(configs) do x
+        TensorTrain([reshape(Float64.(1:q .== x[i]) .* (i == 1 ? f(x) : 1.0), 1, 1, q) for i in 1:N])
+    end
+    T = reduce(+, terms)
+    compress!(T; svd_trunc = TruncThresh(0.0))
+    return T
+end
+
+# Values of a 3-index TT over all configurations (same order as dense_operator).
+tt_values(B, q) = [tt_value(B, x) for x in all_configs(length(B), q)]
