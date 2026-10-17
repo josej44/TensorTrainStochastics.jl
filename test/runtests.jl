@@ -14,4 +14,7 @@ include("helpers.jl")
     @testset "lattices" begin
         include("lattices/test_lattices.jl")
     end
+    @testset "distributions" begin
+        include("distributions/test_distributions.jl")
+    end
 end

@@ -139,3 +139,10 @@ m2 = with_beta(m1, 2.0)
 """
 with_beta(m::ChainModel, β::Real) = ChainModel(m.J, m.h, β)
 with_beta(m::GraphModel, β::Real) = GraphModel(m.A, β)
+
+# Two models are valid replicas if they differ only in β.
+function _check_replicas(m1::ChainModel, m2::ChainModel)
+    (m1.J == m2.J && m1.h == m2.h) ||
+        throw(ArgumentError("replicas must have the same couplings J and fields h; only β may differ"))
+    return nothing
+end

@@ -62,4 +62,8 @@ export identity_tensor_train, divide_by_constant!, multiply_by_constant!, hadama
 # lattices
 export random_3regular, reorder_rcm, add_gaussian_weights, build_instance
 
+# distributions
+export boltzmann_tt, boltzmann_swap_tt, boltzmann_swap_n_tt
+export random_P0, parallel_random_P0_fixed, transform_init_cond_simple, transform_init_cond_multiple
+
 end # module
