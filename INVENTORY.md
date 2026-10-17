@@ -108,6 +108,8 @@ Notes:
   They accept with exp(−(βᵢ−βⱼ)(Eᵢ−Eⱼ)); the correct factor is exp(+(βᵢ−βⱼ)(Eᵢ−Eⱼ)).
   For a hot chain i that finds the lower energy, the correct swap is always accepted, but the code accepts it with probability < 1.
   The TT side (`boltzman_swap_tt`) has the correct sign.
+  `compute_swap_acceptance_rate` has the same inverted rule. Fixed in ReferenceMC: all three use the private
+  `_delta_E_swap(βᵢ, βⱼ, Eᵢ, Eⱼ) = (βⱼ - βᵢ)(Eᵢ - Eⱼ)`, accepted with probability min(1, exp(-delta_E_swap)).
 - **B. `EnergySwap` (suspected).** The in-flow term `B_swap * swap` uses the acceptance a(x,y) where it needs a(y,x),
   so mass is not conserved (the following `normalize!` hides this). It has never been used.
 - **C.** `cluster_size_prob(B, N)` throws a BoundsError.
@@ -119,6 +121,7 @@ Notes:
   neighbours throws `ArgumentError: reducing over an empty collection`. Fixed with `init = 0.0` (h_eff = h_i).
   Found by test. `build_instance` graphs are 3-regular (never isolated), so past results are unaffected;
   `GraphModel(chain)` with a zero coupling at a chain end, or any hand-made graph with an isolated node, hit it.
+  The notebook MC step `mc_step_single!` (now in ReferenceMC) had the same empty sum; same fix.
 
 **Planned tests for A and B (exact enumeration, small N, e.g. N = 3):** one Metropolis swap step must leave
 π_β₁ ⊗ π_β₂ invariant.

@@ -2,6 +2,7 @@ using TensorTrainStochastics
 using TensorTrains
 using LinearAlgebra
 using Random
+using Statistics
 using Test
 
 include("helpers.jl")
@@ -25,5 +26,8 @@ include("helpers.jl")
     end
     @testset "observables" begin
         include("observables/test_observables.jl")
+    end
+    @testset "ReferenceMC" begin
+        include("reference/test_reference_mc.jl")
     end
 end
