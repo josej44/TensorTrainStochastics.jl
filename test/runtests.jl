@@ -2,6 +2,7 @@ using TensorTrainStochastics
 using TensorTrains
 using LinearAlgebra
 using Random
+using StableRNGs
 using Statistics
 using Test
 

@@ -2,7 +2,7 @@ const TTS = TensorTrainStochastics
 
 # exact π₁ ⊗ π₂ on the joint state (combined index) and the swap ratio r(x, y)
 function replica_setup(N; β1 = 0.4, β2 = 0.9, seed = 40)
-    m1 = random_chain_model(N; rng = MersenneTwister(seed + N), β = β1)
+    m1 = random_chain_model(N; rng = StableRNG(seed + N), β = β1)
     m2 = with_beta(m1, β2)
     B1 = boltzmann_tt(m1); normalize!(B1)
     B2 = boltzmann_tt(m2); normalize!(B2)
@@ -29,7 +29,7 @@ swapped(c) = [(k == 2 ? 3 : k == 3 ? 2 : k) for k in c]
     @test tt_values(P1, 4) ≈ πvals                      # π₁ ⊗ π₂ invariant
 
     # from an arbitrary distribution: mass conserved, equals the exact swap kernel
-    Pr = TTS._product_tt([normalize(rand(MersenneTwister(N), 4), 1) for _ in 1:N])
+    Pr = TTS._product_tt([normalize(rand(StableRNG(N), 4), 1) for _ in 1:N])
     pr = tt_values(Pr, 4)
     pos = Dict(c => k for (k, c) in enumerate(configs))
     expected = [pr[k] * (1 - min(1, r(c))) + pr[pos[swapped(c)]] * min(1, r(swapped(c)))
@@ -51,10 +51,21 @@ swapped(c) = [(k == 2 ? 3 : k == 3 ? 2 : k) for k in c]
     @test maximum(abs(tt_value(a_1, c) - f(c)) for c in configs) > 1e-3
 end
 
+@testset "tt_swap on a wide-range instance (bug I, the CI 1.10 failure)" begin
+    # the model MersenneTwister(43) produced on Julia 1.10: 1 + r + r² + r³ spans ≈ 700×
+    m1 = ChainModel([-0.638, 0.5508], [0.7779, 0.8498, -0.1834], 0.4)
+    m2 = with_beta(m1, 0.9)
+    configs = all_configs(3, 4)
+    r(c) = (xy = split_replicas(c); exp((m1.β - m2.β) * (chain_energy(m1, xy[1]) - chain_energy(m1, xy[2]))))
+    f(c) = (rc = r(c); sum(rc^k for k in 1:3) / sum(rc^k for k in 0:3))
+    @test maximum(abs(tt_value(tt_swap(m1, m2, 3, 32; steps = 10), c) - f(c)) for c in configs) > 1e-2
+    @test maximum(abs(tt_value(tt_swap(m1, m2, 3, 32), c) - f(c)) for c in configs) < 1e-8
+end
+
 @testset "ConstantSwap and no_swap" begin
     N = 3
     _, _, Π, _ = replica_setup(N)
-    Pr = TTS._product_tt([normalize(rand(MersenneTwister(1), 4), 1) for _ in 1:N])
+    Pr = TTS._product_tt([normalize(rand(StableRNG(1), 4), 1) for _ in 1:N])
     pr = tt_values(Pr, 4)
     pos = Dict(c => k for (k, c) in enumerate(all_configs(N, 4)))
     expected = [0.75 * pr[k] + 0.25 * pr[pos[swapped(c)]] for (k, c) in enumerate(all_configs(N, 4))]
@@ -64,7 +75,7 @@ end
 end
 
 @testset "distribution_b_tt = dense evolution (N = $N)" for N in (2, 3)
-    m = random_chain_model(N; rng = MersenneTwister(50 + N), β = 0.8)
+    m = random_chain_model(N; rng = StableRNG(50 + N), β = 0.8)
     P0 = random_P0(N)
     p0 = tt_values(TTS._product_tt(P0), 2)
     for rule in (:sequential, :metropolis, :zero_temp, :parallel)
@@ -84,7 +95,7 @@ end
 
 @testset "long-time sequential dynamics converge to Boltzmann" begin
     for N in (2, 3), rule in (:sequential, :metropolis)
-        m = random_chain_model(N; rng = MersenneTwister(60 + N), β = 0.7)
+        m = random_chain_model(N; rng = StableRNG(60 + N), β = 0.7)
         A = build_transition_tensortrain(m; update_rule = rule, bond = 16)
         B = distribution_b_tt_exp(A, random_P0(N), 14, 16, identity, false)   # 2^14 - 1 steps
         @test tt_values(B, 2) ≈ boltzmann_exact(m) atol = 1e-8
@@ -125,10 +136,10 @@ end
 end
 
 @testset "verbose" begin
-    m = random_chain_model(3; rng = MersenneTwister(70))
+    m = random_chain_model(3; rng = StableRNG(70))
     A = build_transition_tensortrain(m; update_rule = :sequential, bond = 8)
     @test isempty(captured_output(() -> distribution_b_tt(A, random_P0(3), 3, 8)))
-    m1 = random_chain_model(2; rng = MersenneTwister(71), β = 0.4)
+    m1 = random_chain_model(2; rng = StableRNG(71), β = 0.4)
     @test isempty(captured_output(() -> tt_swap(m1, with_beta(m1, 0.6), 2, 8)))
     @test !isempty(captured_output(() -> tt_swap(m1, with_beta(m1, 0.6), 2, 8; steps = 2, verbose = true)))
     # ProgressMeter only prints after its update interval, so a short run may print nothing

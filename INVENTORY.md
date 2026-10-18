@@ -122,6 +122,18 @@ Notes:
   Found by test. `build_instance` graphs are 3-regular (never isolated), so past results are unaffected;
   `GraphModel(chain)` with a zero coupling at a chain end, or any hand-made graph with an isolated node, hit it.
   The notebook MC step `mc_step_single!` (now in ReferenceMC) had the same empty sum; same fix.
+- **I. `inverse_tt` / `inverse_secant_tt` ran a fixed number of steps.** Newton–Schulz starts from
+  `x₀ = 1/(2·estimate_norm_tt(B))` and needs about `log₂(2·estimate/min B)` iterations before converging
+  quadratically, so 10 fixed steps fail when `B` spans a wide range or the estimate is loose. `estimate_norm_tt`
+  (product of per-core max-abs matrices) is gauge-dependent: 1.5–1.8× the true max in the CI case, and 1.3e5× under
+  a cond-1e2 gauge per bond. Found by CI on Julia 1.10 (`tt_swap`, N = 3: max|a − f| = 0.1175). Cause: Julia 1.11
+  changed `MersenneTwister` seeding, so the same seed gave a different model on 1.10, with `1 + r + r² + r³`
+  spanning ≈ 690× instead of ≈ 48× (BLAS is MKL on both versions once TensorTrains loads, so not a BLAS effect).
+  Fix: iterate until the relative L2 residual `‖1 − B·X‖₂/‖1‖₂ < tol` (default `1e-12`, `maxsteps = 100`,
+  `@warn` if not reached; `steps = n` keeps the old fixed count; passed through `tt_swap`). The residual is
+  computed exactly by left-orthogonalization (`sqrt(dot)` cannot resolve it below ≈ 1e-8) against a
+  left-orthogonalized copy of `B` (in an ill-conditioned gauge the residual itself stalls at ≈ eps·∏cond).
+  Tests now use StableRNGs so every Julia version runs the same instances.
 
 **Planned tests for A and B (exact enumeration, small N, e.g. N = 3):** one Metropolis swap step must leave
 π_β₁ ⊗ π_β₂ invariant.

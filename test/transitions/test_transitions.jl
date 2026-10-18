@@ -4,7 +4,7 @@ const RULES = Dict(:sequential => glauber_transition_rate, :metropolis => metrop
                    :zero_temp => temp_zero_transition_rate)
 
 @testset "rates" begin
-    rng = MersenneTwister(21)
+    rng = StableRNG(21)
     for N in (2, 3, 4)
         m = random_chain_model(N; rng, β = 0.8)
         for x in all_configs(N, 2), i in 1:N
@@ -28,7 +28,7 @@ const RULES = Dict(:sequential => glauber_transition_rate, :metropolis => metrop
 end
 
 @testset "chain builders = brute force (N = $N)" for N in (2, 3, 4)
-    rng = MersenneTwister(22 + N)
+    rng = StableRNG(22 + N)
     m = random_chain_model(N; rng, β = 1.1)
     for (rule, rate) in RULES
         W = dense_operator(build_transition_tensortrain(m; update_rule = rule, bond = 16), 2)
@@ -52,7 +52,7 @@ end
 end
 
 @testset "builder argument errors" begin
-    m = random_chain_model(3; rng = MersenneTwister(25))
+    m = random_chain_model(3; rng = StableRNG(25))
     @test_throws ArgumentError build_sequential_transition_tt(glauber_transition_rate, m, 5, 3)
     @test_throws ArgumentError build_transition_tensortrain(m; update_rule = :heat_bath)
     @test_throws ArgumentError build_transition_tensortrain(GraphModel(m); update_rule = :sequential)
@@ -60,7 +60,7 @@ end
 end
 
 @testset "parallel_transition_tensor_train (N = $N)" for N in (2, 3)
-    rng = MersenneTwister(26 + N)
+    rng = StableRNG(26 + N)
     m1 = random_chain_model(N; rng, β = 0.5)
     m2 = with_beta(m1, 1.5)
     for rule in (:metropolis, :parallel)
@@ -79,7 +79,7 @@ end
 end
 
 @testset "graph builder (N = $N)" for N in (2, 3, 4)
-    rng = MersenneTwister(30 + N)
+    rng = StableRNG(30 + N)
     # GraphModel(chain) reproduces the chain Metropolis operator exactly
     m = random_chain_model(N; rng, β = 0.9)
     Wg = dense_operator(build_transition_tensortrain(GraphModel(m); bond = 32), 2)

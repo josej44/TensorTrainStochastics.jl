@@ -15,7 +15,7 @@ function exact_single(m)
 end
 
 @testset "single-chain observables (N = $N)" for N in (2, 3, 4)
-    m = random_chain_model(N; rng = MersenneTwister(80 + N), β = 0.9)
+    m = random_chain_model(N; rng = StableRNG(80 + N), β = 0.9)
     B = normalized_boltzmann(m)
     ex = exact_single(m)
 
@@ -52,7 +52,7 @@ end
 end
 
 @testset "min_energy_config (N = $N)" for N in (2, 3, 5)
-    m = random_chain_model(N; rng = MersenneTwister(90 + N))
+    m = random_chain_model(N; rng = StableRNG(90 + N))
     config, spins, E0 = min_energy_config(m)
     energies = [chain_energy(m, x) for x in all_configs(N, 2)]
     @test E0 ≈ minimum(energies)
@@ -61,7 +61,7 @@ end
 end
 
 @testset "two-replica observables (N = $N)" for N in (2, 3, 4)
-    m1 = random_chain_model(N; rng = MersenneTwister(100 + N), β = 0.5)
+    m1 = random_chain_model(N; rng = StableRNG(100 + N), β = 0.5)
     m2 = with_beta(m1, 1.4)
     # a correlated two-replica distribution: π₁⊗π₂ after one fixed-rate swap
     B12 = ConstantSwap(0.3)(replica_product(normalized_boltzmann(m1), normalized_boltzmann(m2)))
@@ -97,7 +97,7 @@ end
 end
 
 @testset "time correlations = dense (N = $N)" for N in (2, 3)
-    m = random_chain_model(N; rng = MersenneTwister(110 + N), β = 0.8)
+    m = random_chain_model(N; rng = StableRNG(110 + N), β = 0.8)
     A = build_transition_tensortrain(m; update_rule = :metropolis, bond = 16)
     W = dense_operator(A, 2)
     configs = all_configs(N, 2)
@@ -126,7 +126,7 @@ end
 end
 
 @testset "cluster_size_prob = enumeration (N = $N)" for N in (2, 3, 4, 5)
-    m = random_chain_model(N; rng = MersenneTwister(120 + N), β = 0.7)
+    m = random_chain_model(N; rng = StableRNG(120 + N), β = 0.7)
     B = normalized_boltzmann(m)
     p = boltzmann_exact(m)
     configs = all_configs(N, 2)

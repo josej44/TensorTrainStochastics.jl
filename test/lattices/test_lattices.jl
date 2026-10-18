@@ -4,12 +4,12 @@ bandwidth(adj) = maximum((abs(i - j) for i in axes(adj, 1), j in axes(adj, 2) if
 
 @testset "random_3regular" begin
     for N in (4, 6, 10)
-        adj = random_3regular(N; rng = MersenneTwister(N))
+        adj = random_3regular(N; rng = StableRNG(N))
         @test size(adj) == (N, N)
         @test is_binary_symmetric(adj)
         @test all(==(3), degrees(adj))
     end
-    @test random_3regular(8; rng = MersenneTwister(1)) == random_3regular(8; rng = MersenneTwister(1))
+    @test random_3regular(8; rng = StableRNG(1)) == random_3regular(8; rng = StableRNG(1))
     for N in (2, 3, 5, 7)
         @test_throws ArgumentError random_3regular(N)
     end
@@ -28,7 +28,7 @@ end
     @test bandwidth(r) == 1
 
     # relabelling preserves the graph (degree sequence, edge count)
-    adj = random_3regular(12; rng = MersenneTwister(2))
+    adj = random_3regular(12; rng = StableRNG(2))
     r = reorder_rcm(adj)
     @test is_binary_symmetric(r) && sum(r) == sum(adj)
     @test sort(degrees(r)) == sort(degrees(adj))
@@ -43,16 +43,16 @@ end
 end
 
 @testset "add_gaussian_weights" begin
-    adj = reorder_rcm(random_3regular(8; rng = MersenneTwister(3)))
-    A = add_gaussian_weights(adj; sJ = 0.5, sh = 0.2, rng = MersenneTwister(4))
+    adj = reorder_rcm(random_3regular(8; rng = StableRNG(3)))
+    A = add_gaussian_weights(adj; sJ = 0.5, sh = 0.2, rng = StableRNG(4))
     @test issymmetric(A)
     offdiag = [(i, j) for i in 1:8, j in 1:8 if i != j]
     @test all((A[i, j] != 0) == (adj[i, j] != 0) for (i, j) in offdiag)
     @test all(!iszero, diag(A))
-    @test A == add_gaussian_weights(adj; sJ = 0.5, sh = 0.2, rng = MersenneTwister(4))
+    @test A == add_gaussian_weights(adj; sJ = 0.5, sh = 0.2, rng = StableRNG(4))
 
     # draw order: upper-triangle couplings row by row, then fields
-    rng = MersenneTwister(4)
+    rng = StableRNG(4)
     edges = [(i, j) for i in 1:8 for j in i+1:8 if adj[i, j] != 0]
     Jexp = [0.5 * randn(rng) for _ in edges]
     hexp = [0.2 * randn(rng) for _ in 1:8]
@@ -60,7 +60,7 @@ end
 
     # sJ = 0 leaves only the fields; N = 2 works
     @test count(!iszero, add_gaussian_weights(adj; sJ = 0.0)) == 8
-    A2 = add_gaussian_weights([0.0 1.0; 1.0 0.0]; rng = MersenneTwister(5))
+    A2 = add_gaussian_weights([0.0 1.0; 1.0 0.0]; rng = StableRNG(5))
     @test issymmetric(A2) && A2[1, 2] != 0
 end
 
@@ -70,7 +70,7 @@ end
     @test A != build_instance(10; sJ = 0.5, sh = 0.2, seed = 8)
     @test all(==(3), degrees(A .- Diagonal(diag(A)) .!= 0))
     @test nsites(GraphModel(A, 1.0)) == 10
-    # same as running the pipeline by hand with one rng
+    # same as running the pipeline by hand with one rng (build_instance uses MersenneTwister(seed))
     rng = MersenneTwister(7)
     adj = reorder_rcm(random_3regular(10; rng))
     @test A == add_gaussian_weights(adj; sJ = 0.5, sh = 0.2, rng)

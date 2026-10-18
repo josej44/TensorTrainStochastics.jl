@@ -1,7 +1,7 @@
 const TTS = TensorTrainStochastics
 
 @testset "boltzmann_tt = exp(-βE)" begin
-    rng = MersenneTwister(11)
+    rng = StableRNG(11)
     for N in (2, 3, 5)
         m = random_chain_model(N; rng, β = 1.3)
         B = boltzmann_tt(m)
@@ -17,7 +17,7 @@ const TTS = TensorTrainStochastics
 end
 
 @testset "boltzmann_swap_tt and boltzmann_swap_n_tt" begin
-    rng = MersenneTwister(12)
+    rng = StableRNG(12)
     for N in (2, 3, 4)
         m1 = random_chain_model(N; rng, β = 0.4)
         m2 = with_beta(m1, 1.7)

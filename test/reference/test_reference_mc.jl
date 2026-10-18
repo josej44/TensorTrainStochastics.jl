@@ -5,7 +5,7 @@ const RMC = ReferenceMC
 max_z(mc, tt, n) = maximum(abs(a - b) / (sqrt(max(1 - b^2, 1e-3)) / sqrt(n)) for (a, b) in zip(mc, tt))
 
 @testset "bug A: Metropolis swap leaves π₁ ⊗ π₂ invariant (N = $N)" for N in (2, 3)
-    m = random_chain_model(N; rng = MersenneTwister(130 + N), β = 0.4)
+    m = random_chain_model(N; rng = StableRNG(130 + N), β = 0.4)
     β1, β2 = 0.4, 0.9
     configs = all_configs(N, 2)
     n = length(configs)
@@ -32,7 +32,7 @@ max_z(mc, tt, n) = maximum(abs(a - b) / (sqrt(max(1 - b^2, 1e-3)) / sqrt(n)) for
     pairs = [(a, b) for a in 1:n, b in 1:n if 0.1 < min(1, exp(-RMC._delta_E_swap(β1, β2, E[a], E[b]))) < 0.9]
     a, b = first(pairs)
     acc = min(1.0, exp(-RMC._delta_E_swap(β1, β2, E[a], E[b])))
-    rng = MersenneTwister(7)
+    rng = StableRNG(7)
     trials = 40_000
     hits1 = hits2 = hits3 = 0
     for _ in 1:trials
@@ -49,7 +49,7 @@ max_z(mc, tt, n) = maximum(abs(a - b) / (sqrt(max(1 - b^2, 1e-3)) / sqrt(n)) for
 end
 
 @testset "basic pieces" begin
-    m = random_chain_model(4; rng = MersenneTwister(140), β = 0.7)
+    m = random_chain_model(4; rng = StableRNG(140), β = 0.7)
     for x in all_configs(4, 2)
         s = σmap.(x)
         @test RMC.compute_total_energy(s, m.J, m.h) ≈ chain_energy(m, x)
@@ -69,7 +69,7 @@ end
     @test p.p0 == 0.1 && p.s == 0.2 && p.seed == 9 && RMC.n_chains(p) == 2 && RMC.validate(p)
     @test RMC.MCParameters(m).betas == [m.β]
 
-    rng = MersenneTwister(1)
+    rng = StableRNG(1)
     chains = [[1, 1], [-1, -1]]
     @test RMC.apply_fixed_rate_swap!(chains, 0.0, rng) == 0 && chains == [[1, 1], [-1, -1]]
     @test RMC.apply_fixed_rate_swap!(chains, 1.0, rng) == 1 && chains == [[-1, -1], [1, 1]]
@@ -80,7 +80,7 @@ end
 
 @testset "TT vs MC: single chain, $rule" for rule in (:sequential, :metropolis, :zero_temp, :parallel)
     N, T, Ns = 3, 25, 20_000
-    m = random_chain_model(N; rng = MersenneTwister(150), β = 0.8)
+    m = random_chain_model(N; rng = StableRNG(150), β = 0.8)
     p = [0.2, 0.7, 0.5]
     A = build_transition_tensortrain(m; update_rule = rule, bond = 16, p0 = 0.2)
     Bt = distribution_b_tt(A, transform_init_cond_simple(p), T, 16)
@@ -96,7 +96,7 @@ end
 
 @testset "TT vs MC: two replicas, $swap swap" for swap in (:fixed_rate, :metropolis)
     N, T, Ns = 3, 20, 20_000
-    m1 = random_chain_model(N; rng = MersenneTwister(160), β = 0.5)
+    m1 = random_chain_model(N; rng = StableRNG(160), β = 0.5)
     m2 = with_beta(m1, 1.2)
     p = [0.3, 0.6, 0.8]
     A12 = parallel_transition_tensor_train(m1, m2; update_rule = :metropolis, bond = 16)

@@ -200,26 +200,60 @@ function multi_step_transition_tt(A::TensorTrain, power_steps::Int, bond::Int)
     return A
 end
 
+# Exact L2 norm of a tensor train, sqrt(Σₓ A(x)²), via left-orthogonalization.
+# Gauge-independent and backward-stable: unlike sqrt(dot(A, A)) it has no √eps floor when
+# A is a small difference such as 1 - B·X.
+function _norm_l2(A)
+    A = deepcopy(A)
+    orthogonalize_left!(A; svd_trunc = TruncThresh(0.0))
+    return norm(A[end]) / abs(float(A.z))
+end
+
+# Relative L2 residual ‖1 - B·X‖₂ / ‖1‖₂ of a pointwise inverse X of B.
+# Pass B in canonical (left-orthogonal) form, see _canonical: in an ill-conditioned gauge the
+# cancellation in 1 - B·X sets a floor of order eps·∏cond(gauge) on the computed residual.
+_inverse_residual(B, X, Id) = _norm_l2(Id - hadamard(B, X)) / _norm_l2(Id)
+
+# Value-preserving copy of A in left-orthogonal form (independent of the gauge of A).
+function _canonical(A)
+    A = deepcopy(A)
+    orthogonalize_left!(A; svd_trunc = TruncThresh(0.0))
+    return A
+end
+
 """
-    inverse_tt(B, bond; steps=10, verbose=false)
+    inverse_tt(B, bond; tol=1e-12, maxsteps=100, steps=nothing, verbose=false)
 
 Pointwise inverse `X(x) ≈ 1 / B(x)` by the Newton–Schulz iteration
 `X_{n+1} = X_n (2 - B X_n)` (products are Hadamard products), compressing to bond
 dimension `bond` after every product. Starts from `X_0 = c (2 - c B)` with
 `c = 1 / (2 · estimate of max|B|)`, which converges for `B > 0`.
 
+By default the iteration stops when the relative L2 residual `‖1 - B·X‖₂ / ‖1‖₂` drops
+below `tol`. The residual is computed exactly from the tensor trains, against a
+left-orthogonalized copy of `B` (so it does not depend on the gauge of `B`) and by
+orthogonalization rather than `dot` (which cannot resolve residuals below about 1e-8);
+a warning is emitted if that does not happen within `maxsteps` iterations. Newton–Schulz
+needs about `log₂(max B / min B)` iterations before it converges quadratically, so wide
+dynamic ranges need more steps. Bond truncation sets a floor on the reachable residual.
+
 `B` is rescaled in place by `normalize_eachmatrix!` (its value is unchanged).
 
 # Keywords
-- `steps::Int`: number of Newton iterations.
+- `tol::Real`: target relative L2 residual.
+- `maxsteps::Int`: maximum number of iterations.
+- `steps`: if an `Int`, run exactly that many iterations with no convergence check
+  (the behaviour before the tolerance was introduced).
 - `verbose::Bool`: print the starting constant, a progress bar and per-step diagnostics.
 
 # Example
 ```julia
-X = inverse_tt(B, 10; steps = 20)
+X = inverse_tt(B, 10)                 # until ‖1 - B·X‖₂/‖1‖₂ < 1e-12
+X = inverse_tt(B, 10; steps = 20)     # exactly 20 iterations
 ```
 """
-function inverse_tt(B, bond; steps = 10, verbose::Bool = false)
+function inverse_tt(B, bond; tol::Real = 1e-12, maxsteps::Int = 100, steps = nothing,
+                    verbose::Bool = false)
     normalize_eachmatrix!(B)
     B0 = 1 / (2 * estimate_norm_tt(B))
     verbose && @show B0
@@ -229,8 +263,13 @@ function inverse_tt(B, bond; steps = 10, verbose::Bool = false)
     two = multiply_by_constant!(identity_tensor_train(B), 2)
     Bn = multiply_by_constant!(two - temp, B0)
 
-    progress = Progress(steps; enabled = verbose)
-    for t in 1:steps
+    Id = identity_tensor_train(B)
+    B_canonical = steps === nothing ? _canonical(B) : B     # only for the residual
+    nmax = steps === nothing ? maxsteps : steps
+    converged = steps !== nothing
+    residual = NaN
+    progress = Progress(nmax; enabled = verbose)
+    for t in 1:nmax
         # X_{n+1} = X_n * (2I - B * X_n)
         temp1 = hadamard(B, Bn)
         normalize_eachmatrix!(temp1)
@@ -245,7 +284,18 @@ function inverse_tt(B, bond; steps = 10, verbose::Bool = false)
 
         verbose && @show estimate_norm_tt(Bn) Bn.z
         next!(progress)
+
+        if steps === nothing
+            residual = _inverse_residual(B_canonical, Bn, Id)
+            verbose && @show t residual
+            if residual < tol
+                converged = true
+                break
+            end
+        end
     end
+    verbose && finish!(progress)
+    converged || @warn "inverse_tt did not converge in $maxsteps steps: relative residual $residual ≥ tol = $tol"
     normalize_eachmatrix!(Bn)
     return Bn
 end
@@ -290,16 +340,19 @@ function inverse_tt_improve(B, bond; steps = 150, verbose::Bool = false)
 end
 
 """
-    inverse_secant_tt(B, bond; steps=20, verbose=false)
+    inverse_secant_tt(B, bond; tol=1e-12, maxsteps=100, steps=nothing, verbose=false)
 
 Pointwise inverse `X(x) ≈ 1 / B(x)` by the secant-type iteration
 `X_{k+1} = X_k + X_{k-1} (I - B X_k)` (Hadamard products), whose residual satisfies
 `e_{k+1} = e_k e_{k-1}`. Compresses to bond dimension `bond` after every operation.
+Stopping rule and keywords as in [`inverse_tt`](@ref): by default iterate until the exact
+relative L2 residual is below `tol` (warning after `maxsteps`); `steps = n` runs exactly
+`n` iterations.
 
 `B` is rescaled in place by `normalize_eachmatrix!` (its value is unchanged).
 
 # Keywords
-- `steps::Int`: number of iterations.
+- `tol::Real`, `maxsteps::Int`, `steps`: see [`inverse_tt`](@ref).
 - `verbose::Bool`: show a progress bar and print `‖I - B X‖` every 5 steps.
 
 # Example
@@ -307,7 +360,8 @@ Pointwise inverse `X(x) ≈ 1 / B(x)` by the secant-type iteration
 X = inverse_secant_tt(B, 10)
 ```
 """
-function inverse_secant_tt(B, bond; steps = 20, verbose::Bool = false)
+function inverse_secant_tt(B, bond; tol::Real = 1e-12, maxsteps::Int = 100, steps = nothing,
+                           verbose::Bool = false)
     # Normalize first
     normalize_eachmatrix!(B)
 
@@ -324,8 +378,12 @@ function inverse_secant_tt(B, bond; steps = 20, verbose::Bool = false)
     normalize_eachmatrix!(X)
     compress!(X; svd_trunc = TruncBond(bond))
 
-    progress = Progress(steps; enabled = verbose)
-    for t in 1:steps
+    B_canonical = steps === nothing ? _canonical(B) : B     # only for the residual
+    nmax = steps === nothing ? maxsteps : steps
+    converged = steps !== nothing
+    residual = NaN
+    progress = Progress(nmax; enabled = verbose)
+    for t in 1:nmax
         # Secant: X_{k+1} = X_k + X_{k-1} * (I - B*X_k)
 
         # Step 1: B * X_k
@@ -358,7 +416,17 @@ function inverse_secant_tt(B, bond; steps = 20, verbose::Bool = false)
             println("  Step $t: ||I - B*X|| ≈ $error_est")
         end
         next!(progress)
+
+        if steps === nothing
+            residual = _inverse_residual(B_canonical, X, Id)
+            if residual < tol
+                converged = true
+                break
+            end
+        end
     end
+    verbose && finish!(progress)
+    converged || @warn "inverse_secant_tt did not converge in $maxsteps steps: relative residual $residual ≥ tol = $tol"
 
     return X
 end

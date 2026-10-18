@@ -73,7 +73,7 @@ function no_swap()
 end
 
 """
-    tt_swap(m1::ChainModel, m2::ChainModel, n, bond; steps=10, verbose=false) -> TensorTrain
+    tt_swap(m1::ChainModel, m2::ChainModel, n, bond; tol=1e-12, maxsteps=100, steps=nothing, verbose=false) -> TensorTrain
 
 Smooth tensor-train approximation of the Metropolis swap acceptance `min(1, r)`:
 
@@ -83,14 +83,15 @@ which tends to `min(1, r)` as `n → ∞` and satisfies detailed balance for eve
 The denominator `1 + r + … + rⁿ` is inverted with [`inverse_tt`](@ref); `bond` bounds all
 compressions.
 
-**Accuracy.** Newton–Schulz needs roughly `log₂(max/min)` steps to converge at the smallest
-values of the denominator, so with the default `steps = 10` the result degrades when `r`
-(hence `1 + r + … + rⁿ`) spans more than about 3 orders of magnitude, i.e. for large
-`|β₁ - β₂| · ΔE` or large `n`. Increase `steps` in that regime and check the result.
+**Accuracy.** By default the inversion iterates until the relative L2 residual is below
+`tol`. Newton–Schulz needs roughly `log₂(max/min)` iterations before converging, so when `r`
+(hence `1 + r + … + rⁿ`) spans many orders of magnitude (large `|β₁ - β₂| · ΔE` or large `n`)
+it takes more steps, and `inverse_tt` warns if `maxsteps` is not enough. A fixed `steps`
+skips the convergence check: with `steps = 10` the result degrades once the range exceeds
+about 3 orders of magnitude.
 
 # Keywords
-- `steps::Int`: Newton iterations passed to [`inverse_tt`](@ref).
-- `verbose::Bool`: passed to [`inverse_tt`](@ref).
+- `tol`, `maxsteps`, `steps`, `verbose`: passed to [`inverse_tt`](@ref).
 
 # Example
 ```julia
@@ -98,7 +99,8 @@ m1 = ChainModel(ones(3), zeros(4), 0.5)
 a = tt_swap(m1, with_beta(m1, 0.8), 3, 10)
 ```
 """
-function tt_swap(m1::ChainModel, m2::ChainModel, n, bond; steps::Int = 10, verbose::Bool = false)
+function tt_swap(m1::ChainModel, m2::ChainModel, n, bond; tol::Real = 1e-12, maxsteps::Int = 100,
+                 steps = nothing, verbose::Bool = false)
     tt = boltzmann_swap_tt(m1, m2)    # r
 
     for i in 2:n
@@ -111,6 +113,6 @@ function tt_swap(m1::ChainModel, m2::ChainModel, n, bond; steps::Int = 10, verbo
     tt_plus = tt + identity_tensor_train(tt)        # 1 + r + ... + rⁿ
     normalize_eachmatrix!(tt_plus)
 
-    tt_inverse = inverse_tt(tt_plus, bond; steps, verbose)   # (1 + r + ... + rⁿ)^(-1)
+    tt_inverse = inverse_tt(tt_plus, bond; tol, maxsteps, steps, verbose)   # (1 + r + ... + rⁿ)^(-1)
     return hadamard(tt, tt_inverse)                 # (r + ... + rⁿ) / (1 + r + ... + rⁿ)
 end

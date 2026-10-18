@@ -55,16 +55,16 @@ end
 end
 
 @testset "random_chain_model" begin
-    m = random_chain_model(6; rng = MersenneTwister(3))
+    m = random_chain_model(6; rng = StableRNG(3))
     @test m isa ChainModel && nsites(m) == 6 && length(m.J) == 5
     @test all(-1 .<= m.J .< 1) && all(-1 .<= m.h .< 1) && 0 <= m.β < 1
 
     # same draw order as the original random_params: β, then J, then h
-    rng = MersenneTwister(3)
+    rng = StableRNG(3)
     β = rand(rng); J = -1 .+ 2 .* rand(rng, 5); h = -1 .+ 2 .* rand(rng, 6)
     @test (m.β, m.J, m.h) == (β, J, h)
 
-    m2 = random_chain_model(4, 0.0, 0.5; rng = MersenneTwister(1), β = 2.0)
+    m2 = random_chain_model(4, 0.0, 0.5; rng = StableRNG(1), β = 2.0)
     @test m2.β == 2.0 && all(0 .<= m2.J .< 0.5) && all(0 .<= m2.h .< 0.5)
     @test_throws ArgumentError random_chain_model(1)
 end

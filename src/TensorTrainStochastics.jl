@@ -2,7 +2,7 @@ module TensorTrainStochastics
 
 # ---- external dependencies (ONLY here) ----
 using TensorTrains
-using TensorTrains: compress!, TruncBond, TruncBondThresh
+using TensorTrains: compress!, TruncBond, TruncBondThresh, TruncThresh, orthogonalize_left!
 using TensorCast
 using Tullio
 using LogarithmicNumbers
